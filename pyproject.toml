@@ -1,0 +1,13 @@
+[project]
+name = "comfyui-save-image-caption"
+description = "Provide two custom nodes to load and save images with captions as separate files."
+version = "1.0.0"
+
+[project.urls]
+Repository = "https://github.com/TheBill2001/ComfyUI-Save-Image-Caption"
+#  Used by Comfy Registry https://comfyregistry.org
+
+[tool.comfy]
+PublisherId = "tuantran1632001"
+DisplayName = "ComfyUI-Save-Image-Caption"
+Icon = ""
