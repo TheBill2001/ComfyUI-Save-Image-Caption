@@ -172,6 +172,7 @@ class SaveImageCaptionBatch(BaseNode):
                 "captions": ("STRING", {"forceInput": True}),
             },
             "optional": {
+                "path": ("STRING", {"default": ""}),
                 "prefix": ("STRING", {"default": "IMG"}),
                 "extension": ("STRING", {"default": ".txt"}),
             },
@@ -194,6 +195,7 @@ class SaveImageCaptionBatch(BaseNode):
         captions: list[str],
         prefix: list[str] = ["IMG"],
         extension: list[str] = [".txt"],
+        path: list[str] = [""],
         prompt=[],
         extra_pnginfo=[],
         node_id=None,
@@ -209,7 +211,12 @@ class SaveImageCaptionBatch(BaseNode):
             extension = "." + extension[0]
         else:
             extension = extension[0]
-
+        if len(path) == 0 or path[0] == "":
+            output_folder = folder_paths.get_output_directory()
+        else:
+            output_folder = path[0]
+            if not os.path.exists(output_folder):
+                os.makedirs(output_folder, exist_ok=True)
         if len(prompt) > 0:
             prompt = prompt[0]
         else:
@@ -219,17 +226,9 @@ class SaveImageCaptionBatch(BaseNode):
             extra_pnginfo = extra_pnginfo[0]
         else:
             extra_pnginfo = None
-
         for index, (image, caption) in enumerate(zip(images, captions)):
-            full_output_folder, filename, counter, _, _ = (
-                folder_paths.get_save_image_path(
-                    prefix,
-                    folder_paths.get_output_directory(),
-                    image[0].shape[1],
-                    image[0].shape[0],
-                )
-            )
-
+            filename = f"{prefix}_{index:05}"
+            save_path = os.path.join(output_folder, filename)
             for batch_number, image in enumerate(image):
                 i = 255.0 * image.cpu().numpy()
                 img = Image.fromarray(np.clip(i, 0, 255).astype(np.uint8))
@@ -241,19 +240,10 @@ class SaveImageCaptionBatch(BaseNode):
                     if extra_pnginfo is not None:
                         for x in extra_pnginfo:
                             metadata.add_text(x, json.dumps(extra_pnginfo[x]))
+                img.save(f"{save_path}_{batch_number}.png", pnginfo=metadata, compress_level=4)
 
-                filename_with_batch_num = filename.replace(
-                    "%batch_num%", str(batch_number)
-                )
-                file = f"{filename_with_batch_num}_{counter:05}_"
-
-                save_path = os.path.join(full_output_folder, file)
-                img.save(f"{save_path}.png",pnginfo=metadata,compress_level=4)
-                counter += 1
-
-                with open(f"{save_path}{extension}", "w", encoding="utf-8") as f:
-                    f.write(caption)
-
+            with open(f"{save_path}{extension}", "w", encoding="utf-8") as f:
+                f.write(caption)
             PromptServer.instance.send_sync(
                 "progress", {"node": node_id, "max": len(images), "value": index}
             )
